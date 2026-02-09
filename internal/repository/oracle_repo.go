@@ -99,40 +99,39 @@ AND (
 // ===== struct intermedio para scan (NULL-safe) =====
 
 type scanPendingFixRow struct {
-	CUIT sql.NullString `db:"CUIT"`
-	//VendCta         sql.NullString `db:"vendcta"`
-	VendNombre      sql.NullString `db:"vendnombre"`
-	CompCta         sql.NullString `db:"compcta"`
-	CompNombre      sql.NullString `db:"compnombre"`
-	VendedorNombre  sql.NullString `db:"vendedorNombre"`
-	CompradorNombre sql.NullString `db:"compradorNombre"`
+	CUIT            sql.NullString `db:"CUIT"`
+	VendNombre      sql.NullString `db:"VENDNOMBRE"`
+	CompCta         sql.NullString `db:"COMPCTA"`
+	CompNombre      sql.NullString `db:"COMPNOMBRE"`
+	VendedorNombre  sql.NullString `db:"VENDEDORNOMBRE"`
+	CompradorNombre sql.NullString `db:"COMPRADORNOMBRE"`
 
-	Contrato     sql.NullString  `db:"contrato"`
-	TTMaxPact    sql.NullFloat64 `db:"ttmaxpact"`
-	IttAplicadas sql.NullFloat64 `db:"ittaplicadas"`
-	IttFijadas   sql.NullFloat64 `db:"ittfijadas"`
-	ContVendedor sql.NullString  `db:"contvendedor"`
+	Contrato     sql.NullString  `db:"CONTRATO"`
+	TTMaxPact    sql.NullFloat64 `db:"TTMAXPACT"`
+	IttAplicadas sql.NullFloat64 `db:"ITTAPLICADAS"`
+	IttFijadas   sql.NullFloat64 `db:"ITTFIJADAS"`
+	ContVendedor sql.NullString  `db:"CONTVENDEDOR"`
 
-	FecEnt    sql.NullTime `db:"fecent"`
-	FecVtoEnt sql.NullTime `db:"fecvtoent"`
+	FecEnt    sql.NullTime `db:"FECENT"`
+	FecVtoEnt sql.NullTime `db:"FECVTOENT"`
 
-	Pendientes sql.NullFloat64 `db:"pendientes"`
-	PendApli   sql.NullFloat64 `db:"pendapli"`
+	Pendientes sql.NullFloat64 `db:"PENDIENTES"`
+	PendApli   sql.NullFloat64 `db:"PENDAPLI"`
 
-	IttLiqTotal   sql.NullFloat64 `db:"ittliqttotal"`
-	IttLiquidadas sql.NullFloat64 `db:"ittliquidadas"`
-	Operacion     sql.NullString  `db:"operacion"`
+	IttLiqTotal   sql.NullFloat64 `db:"ITTLIQTTOTAL"`
+	IttLiquidadas sql.NullFloat64 `db:"ITTLIQUIDADAS"`
+	Operacion     sql.NullString  `db:"OPERACION"`
 
-	FecDesde sql.NullTime `db:"fecdesde"`
-	FecHasta sql.NullTime `db:"fechasta"`
+	FecDesde sql.NullTime `db:"FECDESDE"`
+	FecHasta sql.NullTime `db:"FECHASTA"`
 
-	Grano     sql.NullString `db:"grano"`
-	NomGrano  sql.NullString `db:"nomgrano"`
-	Cosecha   sql.NullString `db:"cosecha"`
-	ContParte sql.NullString `db:"contparte"`
+	Grano     sql.NullString `db:"GRANO"`
+	NomGrano  sql.NullString `db:"NOMGRANO"`
+	Cosecha   sql.NullString `db:"COSECHA"`
+	ContParte sql.NullString `db:"CONTPARTE"`
 
-	DestinoNombre sql.NullString `db:"destinoNombre"`
-	Observacion   sql.NullString `db:"observacion"`
+	DestinoNombre sql.NullString `db:"DESTINONOMBRE"`
+	Observacion   sql.NullString `db:"OBSERVACION"`
 }
 
 // ===== método público =====
