@@ -26,7 +26,7 @@ SQL basado en el que pasaron:
 */
 const sqlPendingFixAll = `
 SELECT
-  SUBSTR(TO_CHAR(b.vendcta),1,12)                AS vendcta,
+  SUBSTR(TO_CHAR(b.vendcta),1,12)                AS cuit,
   b.vendnombre                                   AS vendnombre,
   SUBSTR(TO_CHAR(b.compcta),1,12)                AS compcta,
   b.compnombre                                   AS compnombre,
@@ -99,8 +99,8 @@ AND (
 // ===== struct intermedio para scan (NULL-safe) =====
 
 type scanPendingFixRow struct {
-	CUIT            sql.NullString `db:"cuit"`
-	VendCta         sql.NullString `db:"vendcta"`
+	CUIT sql.NullString `db:"cuit"`
+	//VendCta         sql.NullString `db:"vendcta"`
 	VendNombre      sql.NullString `db:"vendnombre"`
 	CompCta         sql.NullString `db:"compcta"`
 	CompNombre      sql.NullString `db:"compnombre"`
@@ -176,9 +176,9 @@ func (r *OracleRepo) FetchPendingFixAll(
 
 func mapPendingFixRow(x scanPendingFixRow, uninego string) domain.PendingFixRow {
 	r := domain.PendingFixRow{
-		UniNego:         uninego,
-		CUIT:            ns(x.CUIT),
-		VendCta:         ns(x.VendCta),
+		UniNego: uninego,
+		CUIT:    ns(x.CUIT),
+		//VendCta:         ns(x.VendCta),
 		VendNombre:      ns(x.VendNombre),
 		CompCta:         ns(x.CompCta),
 		CompNombre:      ns(x.CompNombre),
