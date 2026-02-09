@@ -80,7 +80,7 @@ type PendingFixRow struct {
 
 	CUIT string `json:"cuit"` // 👈 NECESARIO para summaries
 
-	//VendCta         string `json:"vendcta"`
+	VendCta         string `json:"vendcta"`
 	VendNombre      string `json:"vendnombre"`
 	CompCta         string `json:"compcta"`
 	CompNombre      string `json:"compnombre"`

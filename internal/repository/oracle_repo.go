@@ -26,7 +26,8 @@ SQL basado en el que pasaron:
 */
 const sqlPendingFixAll = `
 SELECT
-  SUBSTR(TO_CHAR(b.vendcta),1,12)                AS cuit,
+  g.cuit as cuit,
+  SUBSTR(TO_CHAR(b.vendcta),1,12)                AS vendcta,
   b.vendnombre                                   AS vendnombre,
   SUBSTR(TO_CHAR(b.compcta),1,12)                AS compcta,
   b.compnombre                                   AS compnombre,
@@ -81,7 +82,10 @@ LEFT JOIN (
    )
 ) d
   ON b.continterno = d.continterno
-
+JOIN mcuenta h
+  ON b.vendcta = h.cuenta
+JOIN mcuit g
+  ON h.ctamadre = g.ctamadre
 WHERE b.operacion IN (
   'AFC','AFL','CFC','SBOA','AFALM','AFANEP','AFAPSE',
   'AFBOL','AFCPSE','AFCNEP','AFWAR','SBOANP',
@@ -99,7 +103,8 @@ AND (
 // ===== struct intermedio para scan (NULL-safe) =====
 
 type scanPendingFixRow struct {
-	CUIT            sql.NullString `db:"CUIT"`
+	CUIT            sql.NullString `json:"CUIT"`
+	VendCta         sql.NullString `db:"VENDCTA"`
 	VendNombre      sql.NullString `db:"VENDNOMBRE"`
 	CompCta         sql.NullString `db:"COMPCTA"`
 	CompNombre      sql.NullString `db:"COMPNOMBRE"`
@@ -175,9 +180,9 @@ func (r *OracleRepo) FetchPendingFixAll(
 
 func mapPendingFixRow(x scanPendingFixRow, uninego string) domain.PendingFixRow {
 	r := domain.PendingFixRow{
-		UniNego: uninego,
-		CUIT:    ns(x.CUIT),
-		//VendCta:         ns(x.VendCta),
+		UniNego:         uninego,
+		CUIT:            ns(x.CUIT),
+		VendCta:         ns(x.VendCta),
 		VendNombre:      ns(x.VendNombre),
 		CompCta:         ns(x.CompCta),
 		CompNombre:      ns(x.CompNombre),
