@@ -103,7 +103,7 @@ AND (
 // ===== struct intermedio para scan (NULL-safe) =====
 
 type scanPendingFixRow struct {
-	CUIT            sql.NullString `json:"CUIT"`
+	CUIT            sql.NullString `db:"CUIT"`
 	VendCta         sql.NullString `db:"VENDCTA"`
 	VendNombre      sql.NullString `db:"VENDNOMBRE"`
 	CompCta         sql.NullString `db:"COMPCTA"`

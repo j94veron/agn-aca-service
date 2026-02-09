@@ -78,7 +78,7 @@ type PendingFixVencidosSnapshot struct {
 type PendingFixRow struct {
 	UniNego string `json:"uninego"` // "CO" o "AC"
 
-	CUIT string `json:"cuit"` // 👈 NECESARIO para summaries
+	CUIT string `json:"cuit"` // NECESARIO para summaries
 
 	VendCta         string `json:"vendcta"`
 	VendNombre      string `json:"vendnombre"`
