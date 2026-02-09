@@ -91,7 +91,7 @@ AND b.status = 50
 AND (b.ttmaxfin - b.ittliqttotal) > 0
 AND (b.ttmaxfin - b.ittfijadas)   > 0
 AND (
-     d.fecfijahasta BETWEEN NDATE_C(:fecha_desde) AND NDATE_C(:fecha_hasta)
+     d.fecfijahasta BETWEEN NDATE_C(TO_DATE(:fecha_desde, 'DD/MM/YYYY')) AND NDATE_C(TO_DATE(:fecha_hasta, 'DD/MM/YYYY'))
      OR d.fecfijahasta IS NULL
 )
 `
