@@ -1,0 +1,17 @@
+services:
+  agn:
+    build:
+      context: .
+    container_name: agn-service
+    environment:
+      CONFIG_ENV: local
+      ORACLE_HOME: /opt/oracle/instantclient_21_12
+      LD_LIBRARY_PATH: /opt/oracle/instantclient_21_12/lib
+    env_file:
+      - .env
+    ports:
+      - "8009:8009"
+    network_mode: host
+    volumes:
+      - /home/jveron/oracle/instantclient_21_12:/opt/oracle/instantclient_21_12
+    restart: unless-stopped
