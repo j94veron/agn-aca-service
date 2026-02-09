@@ -13,7 +13,7 @@ func NewRouter(svc *service.PendingFixService, job *jobs.SyncJob) *gin.Engine {
 	h := NewHandlers(svc, job)
 
 	// 🔒 Grupo protegido por JWT
-	api := r.Group("/api/pending-fix", auth.MiddlewareJWTGin())
+	api := r.Group("/api/v1/pending-fix", auth.MiddlewareJWTGin())
 	{
 		api.GET("/detail", h.GetDetail)
 		api.GET("/summary", h.GetSummary)
@@ -22,7 +22,7 @@ func NewRouter(svc *service.PendingFixService, job *jobs.SyncJob) *gin.Engine {
 	}
 
 	// 🔐 Endpoint interno (si querés, podés dejarlo SIN JWT o con otro middleware)
-	internal := r.Group("/api/pending-fix/internal")
+	internal := r.Group("/api/v1/pending-fix/internal")
 	{
 		internal.POST("/sync", h.SyncNow)
 	}
