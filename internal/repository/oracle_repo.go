@@ -144,13 +144,23 @@ func (r *OracleRepo) FetchPendingFixAll(
 	uninego string,
 ) ([]domain.PendingFixRow, error) {
 
-	args := map[string]any{
+	params := map[string]any{
 		"fecha_desde": fechaDesdeDDMMYYYY,
 		"fecha_hasta": fechaHastaDDMMYYYY,
 	}
 
+	// 1️ Convertir named params -> positional
+	query, args, err := sqlx.Named(sqlPendingFixAll, params)
+	if err != nil {
+		return nil, fmt.Errorf("sqlx.Named: %w", err)
+	}
+
+	// 2️ Rebind para Oracle (:1, :2)
+	query = r.db.Rebind(query)
+
+	// 3️ Ejecutar con args...
 	var rows []scanPendingFixRow
-	if err := r.db.SelectContext(ctx, &rows, sqlPendingFixAll, args); err != nil {
+	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("oracle FetchPendingFixAll: %w", err)
 	}
 
