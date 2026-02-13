@@ -19,6 +19,8 @@ func NewRouter(svc *service.PendingFixService, job *jobs.SyncJob) *gin.Engine {
 		api.GET("/summary", h.GetSummary)
 		api.GET("/monthly", h.GetMonthly)
 		api.GET("/vencidos", h.GetVencidos)
+		api.GET("/vencidos/v2", h.GetVencidosV2)
+
 	}
 
 	// 🔐 Endpoint interno (si querés, podés dejarlo SIN JWT o con otro middleware)

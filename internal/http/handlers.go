@@ -67,3 +67,16 @@ func (h *Handlers) SyncNow(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+func (h *Handlers) GetVencidosV2(c *gin.Context) {
+	uninego := c.Query("uninego")
+	cuit := c.Query("cuit")
+
+	// ventana fija 12
+	snap, err := h.svc.GetVencidosV2(c.Request.Context(), uninego, cuit, 12)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, snap)
+}
