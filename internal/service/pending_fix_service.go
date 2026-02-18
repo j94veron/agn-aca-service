@@ -103,7 +103,7 @@ func (s *PendingFixService) GetVencidos(ctx context.Context, uninego, cuit strin
 }
 
 func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit string, windowMonths int) (*domain.PendingFixVencidosV2Snapshot, error) {
-	// Reusamos el snapshot de detalle ya guardado en Redis
+
 	snap, err := s.redis.LoadDetail12M(ctx)
 	if err != nil {
 		return nil, err
@@ -115,19 +115,35 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 	now := time.Now()
 	startMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 
-	// Prearmar lista fija de 12 meses (o windowMonths)
-	months := make([]string, 0, windowMonths)
+	// ========= meses =========
+	months := make([]string, 0, windowMonths+1)
 	for i := 0; i < windowMonths; i++ {
 		m := startMonth.AddDate(0, i, 0).Format("2006-01")
 		months = append(months, m)
 	}
+	months = append(months, "SIN_FECHA")
 
-	// agg[cuit][uninego][month][grano|cosecha] = tn
+	// hash lookup ultra rápido
+	monthSet := make(map[string]struct{}, len(months))
+	for _, m := range months {
+		monthSet[m] = struct{}{}
+	}
+
+	// ========= agg =========
 	type keyCU struct{ cuit, uninego string }
-	agg := make(map[keyCU]map[string]map[string]float64)
+
+	type aggItem struct {
+		Grano    string
+		Cosecha  string
+		NomGrano string
+		Tn       float64
+	}
+
+	// agg[cuit+uninego][month][grano|cosecha]
+	agg := make(map[keyCU]map[string]map[string]*aggItem)
 
 	for _, r := range snap.Rows {
-		// filtros opcionales
+
 		if uninego != "" && r.UniNego != uninego {
 			continue
 		}
@@ -135,40 +151,41 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 			continue
 		}
 
-		// criterio "vencidos": fecHasta < hoy  OR fecHasta nil (si querés incluir NULL como “sin fecha”)
-		// Para V2 lo pedido es “vencimientos 12 meses” → normalmente se usa FecHasta como “fecha de vencimiento”
-		// Si r.FecHasta es nil: lo podés ignorar o mandarlo a un bucket especial.
-		if r.FecHasta == nil {
-			continue
-		}
+		month := "SIN_FECHA"
 
-		month := r.FecHasta.Format("2006-01")
+		if r.FecHasta != nil {
+			month = r.FecHasta.Format("2006-01")
 
-		// Solo meses dentro de la ventana (12 meses desde hoy)
-		inWindow := false
-		for _, m := range months {
-			if m == month {
-				inWindow = true
-				break
+			if _, ok := monthSet[month]; !ok {
+				continue
 			}
-		}
-		if !inWindow {
-			continue
 		}
 
 		k := keyCU{cuit: r.CUIT, uninego: r.UniNego}
+
 		if _, ok := agg[k]; !ok {
-			agg[k] = make(map[string]map[string]float64)
+			agg[k] = make(map[string]map[string]*aggItem)
 		}
 		if _, ok := agg[k][month]; !ok {
-			agg[k][month] = make(map[string]float64)
+			agg[k][month] = make(map[string]*aggItem)
 		}
 
 		gk := r.Grano + "|" + r.Cosecha
-		agg[k][month][gk] += r.Pendientes // toneladas
+
+		if _, ok := agg[k][month][gk]; !ok {
+			agg[k][month][gk] = &aggItem{
+				Grano:    r.Grano,
+				Cosecha:  r.Cosecha,
+				NomGrano: r.NomGrano,
+				Tn:       0,
+			}
+		}
+
+		agg[k][month][gk].Tn += r.Pendientes
 	}
 
-	// Convertir agg → snapshot
+	// ========= build response =========
+
 	out := &domain.PendingFixVencidosV2Snapshot{
 		GeneratedAt:  snap.GeneratedAt,
 		WindowMonths: windowMonths,
@@ -176,35 +193,31 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 	}
 
 	for k, byMonth := range agg {
+
 		row := domain.PendingFixVencidosV2Row{
 			UniNego: k.uninego,
 			CUIT:    k.cuit,
-			Months:  make([]domain.PendingFixVencidosV2Month, 0, windowMonths),
+			Months:  make([]domain.PendingFixVencidosV2Month, 0, len(months)),
 		}
 
 		for _, m := range months {
-			bucket := byMonth[m] // map[grano|cosecha]tn
+
+			bucket := byMonth[m]
+
 			granos := make([]domain.PendingFixVencidosV2Grano, 0, len(bucket))
-			for gk, tn := range bucket {
-				parts := strings.SplitN(gk, "|", 2)
-				gr := ""
-				co := ""
-				if len(parts) > 0 {
-					gr = parts[0]
-				}
-				if len(parts) == 2 {
-					co = parts[1]
-				}
+
+			for _, it := range bucket {
 				granos = append(granos, domain.PendingFixVencidosV2Grano{
-					Grano:   gr,
-					Cosecha: co,
-					Tn:      tn,
+					Grano:   it.Grano,
+					Cosecha: it.Cosecha,
+					Nombre:  it.NomGrano,
+					Tn:      it.Tn,
 				})
 			}
 
 			row.Months = append(row.Months, domain.PendingFixVencidosV2Month{
 				Month:  m,
-				Granos: granos, // puede estar vacío
+				Granos: granos,
 			})
 		}
 

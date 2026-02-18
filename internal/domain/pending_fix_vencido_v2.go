@@ -5,6 +5,7 @@ import "time"
 type PendingFixVencidosV2Grano struct {
 	Grano   string  `json:"grano"`
 	Cosecha string  `json:"cosecha"`
+	Nombre  string  `json:"nomgrano"`
 	Tn      float64 `json:"tn"`
 }
 
