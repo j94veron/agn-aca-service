@@ -115,21 +115,22 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 	now := time.Now()
 	startMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 
-	// ========= meses =========
-	months := make([]string, 0, windowMonths+1)
+	months := make([]string, 0, windowMonths+2)
+	monthSet := make(map[string]struct{}, windowMonths+2)
+
 	for i := 0; i < windowMonths; i++ {
 		m := startMonth.AddDate(0, i, 0).Format("2006-01")
 		months = append(months, m)
-	}
-	months = append(months, "SIN_FECHA")
-
-	// hash lookup ultra rápido
-	monthSet := make(map[string]struct{}, len(months))
-	for _, m := range months {
 		monthSet[m] = struct{}{}
 	}
 
-	// ========= agg =========
+	// buckets especiales
+	months = append(months, "SIN_FECHA")
+	months = append(months, "VENCIDO")
+
+	monthSet["SIN_FECHA"] = struct{}{}
+	monthSet["VENCIDO"] = struct{}{}
+
 	type keyCU struct{ cuit, uninego string }
 
 	type aggItem struct {
@@ -139,7 +140,6 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 		Tn       float64
 	}
 
-	// agg[cuit+uninego][month][grano|cosecha]
 	agg := make(map[keyCU]map[string]map[string]*aggItem)
 
 	for _, r := range snap.Rows {
@@ -151,13 +151,19 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 			continue
 		}
 
+		// determinar bucket
 		month := "SIN_FECHA"
 
 		if r.FecHasta != nil {
-			month = r.FecHasta.Format("2006-01")
 
-			if _, ok := monthSet[month]; !ok {
-				continue
+			if r.FecHasta.Before(now) {
+				month = "VENCIDO"
+			} else {
+				month = r.FecHasta.Format("2006-01")
+
+				if _, ok := monthSet[month]; !ok {
+					continue
+				}
 			}
 		}
 
@@ -166,6 +172,7 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 		if _, ok := agg[k]; !ok {
 			agg[k] = make(map[string]map[string]*aggItem)
 		}
+
 		if _, ok := agg[k][month]; !ok {
 			agg[k][month] = make(map[string]*aggItem)
 		}
@@ -177,14 +184,11 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 				Grano:    r.Grano,
 				Cosecha:  r.Cosecha,
 				NomGrano: r.NomGrano,
-				Tn:       0,
 			}
 		}
 
 		agg[k][month][gk].Tn += r.Pendientes
 	}
-
-	// ========= build response =========
 
 	out := &domain.PendingFixVencidosV2Snapshot{
 		GeneratedAt:  snap.GeneratedAt,
