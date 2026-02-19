@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
+	"time"
 
 	"agn-service/internal/domain"
 
@@ -66,18 +68,18 @@ SELECT
   SUBSTR(TO_CHAR(b.destino),1,12)||'-'||e.nombre AS destinoNombre,
   b.observacion                                  AS observacion
 
-FROM CORRETAJE.contrato b
-JOIN CORRETAJE.grano c
+FROM %s.contrato b
+JOIN %s.grano c
   ON b.grano = c.grano
  AND b.cosecha = c.cosecha
 JOIN mcuenta e
   ON b.destino = e.cuenta
 LEFT JOIN (
   SELECT continterno, fecfijadesde, fecfijahasta
-    FROM CORRETAJE.ctfijar t
+    FROM %s.ctfijar t
    WHERE fecfijahasta = (
      SELECT MAX(u.fecfijahasta)
-       FROM CORRETAJE.ctfijar u
+       FROM %s.ctfijar u
       WHERE u.continterno = t.continterno
    )
 ) d
@@ -94,10 +96,6 @@ WHERE b.operacion IN (
 AND b.status = 50
 AND (b.ttmaxfin - b.ittliqttotal) > 0
 AND (b.ttmaxfin - b.ittfijadas)   > 0
-AND (
-     d.fecfijahasta BETWEEN NDATE_C(TO_DATE(:fecha_desde, 'DD/MM/YYYY')) AND NDATE_C(TO_DATE(:fecha_hasta, 'DD/MM/YYYY'))
-     OR d.fecfijahasta IS NULL
-)
 `
 
 // ===== struct intermedio para scan (NULL-safe) =====
@@ -143,35 +141,49 @@ type scanPendingFixRow struct {
 
 func (r *OracleRepo) FetchPendingFixAll(
 	ctx context.Context,
-	fechaDesdeDDMMYYYY string,
-	fechaHastaDDMMYYYY string,
-	uninego string,
 ) ([]domain.PendingFixRow, error) {
 
-	params := map[string]any{
-		"fecha_desde": fechaDesdeDDMMYYYY,
-		"fecha_hasta": fechaHastaDDMMYYYY,
+	type result struct {
+		rows []domain.PendingFixRow
+		err  error
 	}
 
-	// 1️ Convertir named params -> positional
-	query, args, err := sqlx.Named(sqlPendingFixAll, params)
-	if err != nil {
-		return nil, fmt.Errorf("sqlx.Named: %w", err)
+	var wg sync.WaitGroup
+
+	chCO := make(chan result, 1)
+	chAC := make(chan result, 1)
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		rows, err := r.fetchBySchema(ctx, "CORRETAJE", "CO")
+		chCO <- result{rows, err}
+	}()
+
+	go func() {
+		defer wg.Done()
+		rows, err := r.fetchBySchema(ctx, "ACOPIO", "AC")
+		chAC <- result{rows, err}
+	}()
+
+	wg.Wait()
+	close(chCO)
+	close(chAC)
+
+	resCO := <-chCO
+	resAC := <-chAC
+
+	if resCO.err != nil {
+		return nil, resCO.err
+	}
+	if resAC.err != nil {
+		return nil, resAC.err
 	}
 
-	// 2️ Rebind para Oracle (:1, :2)
-	query = r.db.Rebind(query)
-
-	// 3️ Ejecutar con args...
-	var rows []scanPendingFixRow
-	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
-		return nil, fmt.Errorf("oracle FetchPendingFixAll: %w", err)
-	}
-
-	out := make([]domain.PendingFixRow, 0, len(rows))
-	for _, x := range rows {
-		out = append(out, mapPendingFixRow(x, uninego))
-	}
+	out := make([]domain.PendingFixRow, 0, len(resCO.rows)+len(resAC.rows))
+	out = append(out, resCO.rows...)
+	out = append(out, resAC.rows...)
 
 	return out, nil
 }
@@ -240,4 +252,29 @@ func nf(v sql.NullFloat64) float64 {
 		return v.Float64
 	}
 	return 0
+}
+
+func (r *OracleRepo) fetchBySchema(
+	ctx context.Context,
+	schema string,
+	uninego string,
+) ([]domain.PendingFixRow, error) {
+
+	query := fmt.Sprintf(sqlPendingFixAll, schema, schema, schema, schema)
+
+	var rows []scanPendingFixRow
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	if err := r.db.SelectContext(ctxTimeout, &rows, query); err != nil {
+		return nil, fmt.Errorf("oracle FetchPendingFixAll %s: %w", schema, err)
+	}
+
+	out := make([]domain.PendingFixRow, len(rows))
+	for i := range rows {
+		out[i] = mapPendingFixRow(rows[i], uninego)
+	}
+
+	return out, nil
 }
