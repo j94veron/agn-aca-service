@@ -11,9 +11,8 @@ import (
 )
 
 type SyncJob struct {
-	coRepo *repository.OracleRepo
-	acRepo *repository.OracleRepo
-	redis  *repository.RedisRepo
+	repo  *repository.OracleRepo
+	redis *repository.RedisRepo
 
 	ttl              time.Duration
 	months           int
@@ -21,16 +20,14 @@ type SyncJob struct {
 }
 
 func NewSyncJob(
-	coRepo *repository.OracleRepo,
-	acRepo *repository.OracleRepo,
+	repo *repository.OracleRepo,
 	redis *repository.RedisRepo,
 	ttl time.Duration,
 	months int,
 	proxWindowMonths int,
 ) *SyncJob {
 	return &SyncJob{
-		coRepo:           coRepo,
-		acRepo:           acRepo,
+		repo:             repo,
 		redis:            redis,
 		ttl:              ttl,
 		months:           months,
@@ -60,25 +57,15 @@ func (j *SyncJob) Run(ctx context.Context) error {
 }
 
 func (j *SyncJob) buildDetail12M(ctx context.Context, now time.Time) (*domain.PendingFixDetailSnapshot, error) {
+
 	from := utils.TruncDay(now)
 	to := from.AddDate(0, j.months, 0)
 
-	fDesde := utils.FormatDDMMYYYY(from)
-	fHasta := utils.FormatDDMMYYYY(to)
-
-	var all []domain.PendingFixRow
-
-	coRows, err := j.coRepo.FetchPendingFixAll(ctx, fDesde, fHasta, "CO")
+	// 🔥 AHORA UNA SOLA LLAMADA
+	all, err := j.repo.FetchPendingFixAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	all = append(all, coRows...)
-
-	acRows, err := j.acRepo.FetchPendingFixAll(ctx, fDesde, fHasta, "AC")
-	if err != nil {
-		return nil, err
-	}
-	all = append(all, acRows...)
 
 	snap := domain.PendingFixDetailSnapshot{
 		GeneratedAt: now,
@@ -91,6 +78,7 @@ func (j *SyncJob) buildDetail12M(ctx context.Context, now time.Time) (*domain.Pe
 	if err := j.redis.SaveDetail12M(ctx, snap, j.ttl); err != nil {
 		return nil, err
 	}
+
 	return &snap, nil
 }
 
