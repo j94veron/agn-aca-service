@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
 	"time"
 
 	"agn-service/internal/domain"
@@ -141,51 +140,10 @@ type scanPendingFixRow struct {
 
 func (r *OracleRepo) FetchPendingFixAll(
 	ctx context.Context,
+	schema string,
+	uninego string,
 ) ([]domain.PendingFixRow, error) {
-
-	type result struct {
-		rows []domain.PendingFixRow
-		err  error
-	}
-
-	var wg sync.WaitGroup
-
-	chCO := make(chan result, 1)
-	chAC := make(chan result, 1)
-
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		rows, err := r.fetchBySchema(ctx, "CORRETAJE", "CO")
-		chCO <- result{rows, err}
-	}()
-
-	go func() {
-		defer wg.Done()
-		rows, err := r.fetchBySchema(ctx, "ACOPIO", "AC")
-		chAC <- result{rows, err}
-	}()
-
-	wg.Wait()
-	close(chCO)
-	close(chAC)
-
-	resCO := <-chCO
-	resAC := <-chAC
-
-	if resCO.err != nil {
-		return nil, resCO.err
-	}
-	if resAC.err != nil {
-		return nil, resAC.err
-	}
-
-	out := make([]domain.PendingFixRow, 0, len(resCO.rows)+len(resAC.rows))
-	out = append(out, resCO.rows...)
-	out = append(out, resAC.rows...)
-
-	return out, nil
+	return r.fetchBySchema(ctx, schema, uninego)
 }
 
 // ===== mapper =====

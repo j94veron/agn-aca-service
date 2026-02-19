@@ -11,8 +11,9 @@ import (
 )
 
 type SyncJob struct {
-	repo  *repository.OracleRepo
-	redis *repository.RedisRepo
+	coRepo *repository.OracleRepo
+	acRepo *repository.OracleRepo
+	redis  *repository.RedisRepo
 
 	ttl              time.Duration
 	months           int
@@ -20,14 +21,16 @@ type SyncJob struct {
 }
 
 func NewSyncJob(
-	repo *repository.OracleRepo,
+	coRepo *repository.OracleRepo,
+	acRepo *repository.OracleRepo,
 	redis *repository.RedisRepo,
 	ttl time.Duration,
 	months int,
 	proxWindowMonths int,
 ) *SyncJob {
 	return &SyncJob{
-		repo:             repo,
+		coRepo:           coRepo,
+		acRepo:           acRepo,
 		redis:            redis,
 		ttl:              ttl,
 		months:           months,
@@ -62,10 +65,19 @@ func (j *SyncJob) buildDetail12M(ctx context.Context, now time.Time) (*domain.Pe
 	to := from.AddDate(0, j.months, 0)
 
 	// 🔥 AHORA UNA SOLA LLAMADA
-	all, err := j.repo.FetchPendingFixAll(ctx)
+	var all []domain.PendingFixRow
+
+	coRows, err := j.coRepo.FetchPendingFixAll(ctx, "CORRETAJE", "CO")
 	if err != nil {
 		return nil, err
 	}
+	all = append(all, coRows...)
+
+	acRows, err := j.acRepo.FetchPendingFixAll(ctx, "ACOPIO", "AC")
+	if err != nil {
+		return nil, err
+	}
+	all = append(all, acRows...)
 
 	snap := domain.PendingFixDetailSnapshot{
 		GeneratedAt: now,
