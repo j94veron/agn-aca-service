@@ -81,3 +81,42 @@ func (r *RedisRepo) LoadVencidos(ctx context.Context) (*domain.PendingFixVencido
 	}
 	return &snap, nil
 }
+
+// ==============================
+// PENDING DELIVERY
+// ==============================
+
+func (r *RedisRepo) SavePendingDelivery(
+	ctx context.Context,
+	snap domain.PendingDeliverySnapshot,
+	ttl time.Duration,
+) error {
+
+	key := "pending-delivery:detail"
+
+	data, err := json.Marshal(snap)
+	if err != nil {
+		return err
+	}
+
+	return r.rdb.Set(ctx, key, data, ttl).Err()
+}
+
+func (r *RedisRepo) GetPendingDelivery(
+	ctx context.Context,
+) (*domain.PendingDeliverySnapshot, error) {
+
+	key := "pending-delivery:detail"
+
+	val, err := r.rdb.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	var snap domain.PendingDeliverySnapshot
+	if err := json.Unmarshal(val, &snap); err != nil {
+		return nil, err
+	}
+
+	return &snap, nil
+}

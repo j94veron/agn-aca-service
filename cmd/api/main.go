@@ -49,6 +49,18 @@ func main() {
 	syncJob := jobs.NewSyncJob(coRepo, acRepo, redisRepo, cfg.StatsTTL, cfg.SyncMonths, cfg.ProxWindowMonths)
 	svc := service.NewPendingFixService(redisRepo)
 
+	pendingDeliveryRepoCO := repository.NewOraclePendingEntregaRepo(coDB)
+	pendingDeliveryRepoAC := repository.NewOraclePendingEntregaRepo(acDB)
+
+	pendingDeliverySyncJob := jobs.NewPendingDeliverySyncJob(
+		pendingDeliveryRepoCO,
+		pendingDeliveryRepoAC,
+		redisRepo,
+		cfg.StatsTTL,
+	)
+
+	pendingDeliveryService := service.NewPendingDeliveryService(redisRepo)
+
 	// Cron (segundos)
 	cr := cron.New(cron.WithSeconds())
 	_, err = cr.AddFunc(cfg.SyncCron, func() {
@@ -58,12 +70,19 @@ func main() {
 			log.Println("sync job ok")
 		}
 	})
+	_, err = cr.AddFunc(cfg.SyncCron, func() {
+		if e := pendingDeliverySyncJob.Run(context.Background()); e != nil {
+			log.Println("pending delivery sync error:", e)
+		} else {
+			log.Println("pending delivery sync ok")
+		}
+	})
 	if err != nil {
 		log.Fatal("cron:", err)
 	}
 	cr.Start()
 
-	r := http.NewRouter(svc, syncJob)
+	r := http.NewRouter(svc, pendingDeliveryService, syncJob, pendingDeliverySyncJob)
 	log.Println("listening on", cfg.HTTPAddr)
 	if err := r.Run(cfg.HTTPAddr); err != nil {
 		log.Fatal(err)

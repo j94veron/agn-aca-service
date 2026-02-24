@@ -8,11 +8,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(svc *service.PendingFixService, job *jobs.SyncJob) *gin.Engine {
-	r := gin.Default()
-	h := NewHandlers(svc, job)
+func NewRouter(
+	fixSvc *service.PendingFixService,
+	deliverySvc *service.PendingDeliveryService,
+	fixJob *jobs.SyncJob,
+	deliveryJob *jobs.PendingDeliverySyncJob,
+) *gin.Engine {
 
-	// 🔒 Grupo protegido por JWT
+	r := gin.Default()
+
+	h := NewHandlers(fixSvc, fixJob)
+	dh := NewPendingDeliveryHandlers(deliverySvc, deliveryJob)
+
+	// =============================
+	// 🔒 Pending Fix
+	// =============================
 	api := r.Group("/api/v1/pending-fix", auth.MiddlewareJWTGin())
 	{
 		api.GET("/detail", h.GetDetail)
@@ -20,13 +30,24 @@ func NewRouter(svc *service.PendingFixService, job *jobs.SyncJob) *gin.Engine {
 		api.GET("/monthly", h.GetMonthly)
 		api.GET("/vencidos", h.GetVencidos)
 		api.GET("/vencidos/v2", h.GetVencidosV2)
-
 	}
 
-	// 🔐 Endpoint interno (si querés, podés dejarlo SIN JWT o con otro middleware)
 	internal := r.Group("/api/v1/pending-fix/internal")
 	{
 		internal.POST("/sync", h.SyncNow)
+	}
+
+	// =============================
+	// 🚀 Pending Delivery NUEVO
+	// =============================
+	delivery := r.Group("/api/v1/pending-delivery", auth.MiddlewareJWTGin())
+	{
+		delivery.GET("/list", dh.GetList)
+	}
+
+	internalDelivery := r.Group("/api/v1/pending-delivery/internal")
+	{
+		internalDelivery.POST("/sync", dh.SyncNow)
 	}
 
 	return r
