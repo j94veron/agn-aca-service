@@ -142,7 +142,7 @@ func (r *OraclePendingEntregaRepo) FetchAll(ctx context.Context, schema string, 
 		schema, schema, schema, schema, schema, // mcuenta d,e,f,g y mcuit h
 	)
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, 90*time.Second)
+	ctxTimeout, cancel := context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
 
 	var rows []scanPendingDeliveryRow
