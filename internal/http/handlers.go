@@ -41,11 +41,15 @@ func (h *Handlers) GetSummary(c *gin.Context) {
 }
 
 func (h *Handlers) GetMonthly(c *gin.Context) {
-	snap, err := h.svc.GetMonthly12M(c.Request.Context())
+	uninego := c.Query("uninego")
+	cuit := c.Query("cuit")
+
+	snap, err := h.svc.GetMonthly12M(c.Request.Context(), uninego, cuit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, snap)
 }
 

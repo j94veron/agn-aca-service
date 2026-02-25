@@ -1,6 +1,7 @@
 package service
 
 import (
+	"agn-service/internal/utils"
 	"context"
 	"strings"
 	"time"
@@ -70,9 +71,55 @@ func (s *PendingFixService) GetSummary(ctx context.Context, uninego, cuit string
 	return snap, nil
 }
 
-// 3) Monthly 12M (toneladas)
-func (s *PendingFixService) GetMonthly12M(ctx context.Context) (*domain.PendingFixMonthlySnapshot, error) {
-	return s.redis.LoadMonthly12M(ctx)
+// 3) Monthly 12M (toneladas) - ahora con filtros opcionales
+func (s *PendingFixService) GetMonthly12M(ctx context.Context, uninego, cuit string) (*domain.PendingFixMonthlySnapshot, error) {
+	// Usamos el snapshot de detalle (cacheado) para poder filtrar
+	detail, err := s.redis.LoadDetail12M(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	uninego = strings.TrimSpace(strings.ToUpper(uninego))
+	cuit = strings.TrimSpace(cuit)
+
+	fromMonth := utils.MonthStart(detail.FromDate)
+
+	// inicializa 12 meses con ceros
+	rows := make([]domain.PendingFixMonthlyRow, 0, detail.Months)
+	idx := map[string]int{}
+	for i := 0; i < detail.Months; i++ {
+		m := fromMonth.AddDate(0, i, 0)
+		k := utils.MonthKey(m) // "YYYY-MM"
+		idx[k] = i
+		rows = append(rows, domain.PendingFixMonthlyRow{Month: k, Tn: 0})
+	}
+
+	// suma toneladas por mes usando fechasta, aplicando filtros
+	for _, r := range detail.Rows {
+		if uninego != "" && r.UniNego != uninego {
+			continue
+		}
+		if cuit != "" && r.CUIT != cuit {
+			continue
+		}
+		if r.FecHasta == nil {
+			continue
+		}
+
+		k := utils.MonthKey(*r.FecHasta)
+		if pos, ok := idx[k]; ok {
+			rows[pos].Tn += r.Pendientes
+		}
+	}
+
+	out := &domain.PendingFixMonthlySnapshot{
+		GeneratedAt: detail.GeneratedAt,
+		FromMonth:   utils.MonthKey(fromMonth),
+		Months:      detail.Months,
+		Rows:        rows,
+	}
+
+	return out, nil
 }
 
 // 4) Vencidos con vacíos (por CUIT)
