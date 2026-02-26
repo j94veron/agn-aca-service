@@ -92,6 +92,7 @@ WHERE b.operacion IN (
   'AFBOL','AFCPSE','AFCNEP','AFWAR','SBOANP',
   'CANAF','AFBNEP','AFWNEP','CANFNE'
 )
+AND b.negocio = 'CV'
 AND b.status = 50
 AND (b.ttmaxfin - b.ittliqttotal) > 0
 AND (b.ttmaxfin - b.ittfijadas)   > 0
