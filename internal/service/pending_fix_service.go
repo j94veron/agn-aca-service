@@ -19,145 +19,194 @@ func NewPendingFixService(redis *repository.RedisRepo) *PendingFixService {
 }
 
 // 1) Detalle
-func (s *PendingFixService) GetDetail(ctx context.Context, uninego, cuit string) (*domain.PendingFixDetailSnapshot, error) {
+func (s *PendingFixService) GetDetail(
+	ctx context.Context,
+	filters domain.PendingFixFilters,
+) (*domain.PendingFixDetailSnapshot, error) {
+
 	snap, err := s.redis.LoadDetail12M(ctx)
 	if err != nil {
 		return nil, err
 	}
-	uninego = strings.TrimSpace(strings.ToUpper(uninego))
-	cuit = strings.TrimSpace(cuit)
-
-	if uninego == "" && cuit == "" {
-		return snap, nil
-	}
 
 	out := make([]domain.PendingFixRow, 0, len(snap.Rows))
+
 	for _, r := range snap.Rows {
-		if uninego != "" && r.UniNego != uninego {
-			continue
+		if matchPendingFix(r, filters) {
+			out = append(out, r)
 		}
-		if cuit != "" && r.CUIT != cuit {
-			continue
-		}
-		out = append(out, r)
 	}
+
 	snap.Rows = out
 	return snap, nil
 }
 
 // 2) Summary por CUIT
-func (s *PendingFixService) GetSummary(ctx context.Context, uninego, cuit string) (*domain.PendingFixSummarySnapshot, error) {
-	snap, err := s.redis.LoadSummary(ctx)
+func (s *PendingFixService) GetSummary(
+	ctx context.Context,
+	filters domain.PendingFixFilters,
+) (*domain.PendingFixSummarySnapshot, error) {
+
+	detail, err := s.GetDetail(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
-	uninego = strings.TrimSpace(strings.ToUpper(uninego))
-	cuit = strings.TrimSpace(cuit)
-	if uninego == "" && cuit == "" {
-		return snap, nil
+
+	type key struct{ UniNego, CUIT string }
+	m := make(map[key]*domain.PendingFixSummaryRow)
+	today := time.Now()
+
+	for _, r := range detail.Rows {
+		k := key{r.UniNego, r.CUIT}
+		if m[k] == nil {
+			m[k] = &domain.PendingFixSummaryRow{
+				UniNego: r.UniNego,
+				CUIT:    r.CUIT,
+			}
+		}
+
+		m[k].TnPendientes += r.Pendientes
+
+		if r.FecHasta != nil && r.FecHasta.Before(today) {
+			m[k].TnVencidas += r.Pendientes
+		}
+
+		if r.FecVtoEnt == nil {
+			m[k].CtSinVtoEnt++
+		}
 	}
 
-	out := make([]domain.PendingFixSummaryRow, 0, len(snap.Rows))
-	for _, r := range snap.Rows {
-		if uninego != "" && r.UniNego != uninego {
-			continue
-		}
-		if cuit != "" && r.CUIT != cuit {
-			continue
-		}
-		out = append(out, r)
+	out := make([]domain.PendingFixSummaryRow, 0, len(m))
+	for _, v := range m {
+		out = append(out, *v)
 	}
-	snap.Rows = out
-	return snap, nil
+
+	return &domain.PendingFixSummarySnapshot{
+		GeneratedAt: detail.GeneratedAt,
+		Rows:        out,
+	}, nil
 }
 
 // 3) Monthly 12M (toneladas) - ahora con filtros opcionales
-func (s *PendingFixService) GetMonthly12M(ctx context.Context, uninego, cuit string) (*domain.PendingFixMonthlySnapshot, error) {
-	// Usamos el snapshot de detalle (cacheado) para poder filtrar
-	detail, err := s.redis.LoadDetail12M(ctx)
+func (s *PendingFixService) GetMonthly12M(
+	ctx context.Context,
+	filters domain.PendingFixFilters,
+) (*domain.PendingFixMonthlySnapshot, error) {
+
+	detail, err := s.GetDetail(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
 
-	uninego = strings.TrimSpace(strings.ToUpper(uninego))
-	cuit = strings.TrimSpace(cuit)
-
 	fromMonth := utils.MonthStart(detail.FromDate)
 
-	// inicializa 12 meses con ceros
 	rows := make([]domain.PendingFixMonthlyRow, 0, detail.Months)
 	idx := map[string]int{}
+
 	for i := 0; i < detail.Months; i++ {
 		m := fromMonth.AddDate(0, i, 0)
-		k := utils.MonthKey(m) // "YYYY-MM"
+		k := utils.MonthKey(m)
 		idx[k] = i
-		rows = append(rows, domain.PendingFixMonthlyRow{Month: k, Tn: 0})
+		rows = append(rows, domain.PendingFixMonthlyRow{Month: k})
 	}
 
-	// suma toneladas por mes usando fechasta, aplicando filtros
 	for _, r := range detail.Rows {
-		if uninego != "" && r.UniNego != uninego {
-			continue
-		}
-		if cuit != "" && r.CUIT != cuit {
-			continue
-		}
 		if r.FecHasta == nil {
 			continue
 		}
-
 		k := utils.MonthKey(*r.FecHasta)
 		if pos, ok := idx[k]; ok {
 			rows[pos].Tn += r.Pendientes
 		}
 	}
 
-	out := &domain.PendingFixMonthlySnapshot{
+	return &domain.PendingFixMonthlySnapshot{
 		GeneratedAt: detail.GeneratedAt,
 		FromMonth:   utils.MonthKey(fromMonth),
 		Months:      detail.Months,
 		Rows:        rows,
-	}
-
-	return out, nil
+	}, nil
 }
 
 // 4) Vencidos con vacíos (por CUIT)
-func (s *PendingFixService) GetVencidos(ctx context.Context, uninego, cuit string) (*domain.PendingFixVencidosSnapshot, error) {
-	snap, err := s.redis.LoadVencidos(ctx)
+func (s *PendingFixService) GetVencidos(
+	ctx context.Context,
+	filters domain.PendingFixFilters,
+) (*domain.PendingFixVencidosSnapshot, error) {
+
+	detail, err := s.GetDetail(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
 
-	uninego = strings.TrimSpace(strings.ToUpper(uninego))
-	cuit = strings.TrimSpace(cuit)
-	if uninego == "" && cuit == "" {
-		return snap, nil
+	now := time.Now()
+	todayMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	type key struct{ UniNego, CUIT string }
+
+	group := map[key][]domain.PendingFixRow{}
+
+	for _, r := range detail.Rows {
+		k := key{r.UniNego, r.CUIT}
+		group[k] = append(group[k], r)
 	}
 
-	out := make([]domain.PendingFixVencidosRow, 0, len(snap.Rows))
-	for _, r := range snap.Rows {
-		if uninego != "" && r.UniNego != uninego {
-			continue
+	var out []domain.PendingFixVencidosRow
+
+	for k, rows := range group {
+
+		anchorMonth := todayMonth.Format("2006-01")
+
+		months := make([]domain.PendingFixVencidosMonth, 0)
+
+		monthAgg := make(map[string]float64)
+
+		for _, r := range rows {
+
+			if r.FecHasta == nil {
+				continue
+			}
+
+			month := r.FecHasta.Format("2006-01")
+
+			if r.FecHasta.Before(now) {
+				month = "VENCIDO"
+			}
+
+			monthAgg[month] += r.Pendientes
 		}
-		if cuit != "" && r.CUIT != cuit {
-			continue
+
+		for m, tn := range monthAgg {
+			months = append(months, domain.PendingFixVencidosMonth{
+				Month: m,
+				Tn:    tn,
+			})
 		}
-		out = append(out, r)
+
+		out = append(out, domain.PendingFixVencidosRow{
+			UniNego:     k.UniNego,
+			CUIT:        k.CUIT,
+			AnchorMonth: anchorMonth,
+			Months:      months,
+		})
 	}
-	snap.Rows = out
-	return snap, nil
+
+	return &domain.PendingFixVencidosSnapshot{
+		GeneratedAt: detail.GeneratedAt,
+		Rows:        out,
+	}, nil
 }
 
-func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit string, windowMonths int) (*domain.PendingFixVencidosV2Snapshot, error) {
+func (s *PendingFixService) GetVencidosV2(
+	ctx context.Context,
+	filters domain.PendingFixFilters,
+	windowMonths int,
+) (*domain.PendingFixVencidosV2Snapshot, error) {
 
-	snap, err := s.redis.LoadDetail12M(ctx)
+	detail, err := s.GetDetail(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
-
-	uninego = strings.TrimSpace(strings.ToUpper(uninego))
-	cuit = strings.TrimSpace(cuit)
 
 	now := time.Now()
 	startMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
@@ -171,7 +220,6 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 		monthSet[m] = struct{}{}
 	}
 
-	// buckets especiales
 	months = append(months, "SIN_FECHA")
 	months = append(months, "VENCIDO")
 
@@ -189,16 +237,8 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 
 	agg := make(map[keyCU]map[string]map[string]*aggItem)
 
-	for _, r := range snap.Rows {
+	for _, r := range detail.Rows {
 
-		if uninego != "" && r.UniNego != uninego {
-			continue
-		}
-		if cuit != "" && r.CUIT != cuit {
-			continue
-		}
-
-		// determinar bucket
 		month := "SIN_FECHA"
 
 		if r.FecHasta != nil {
@@ -207,7 +247,6 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 				month = "VENCIDO"
 			} else {
 				month = r.FecHasta.Format("2006-01")
-
 				if _, ok := monthSet[month]; !ok {
 					continue
 				}
@@ -238,7 +277,7 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 	}
 
 	out := &domain.PendingFixVencidosV2Snapshot{
-		GeneratedAt:  snap.GeneratedAt,
+		GeneratedAt:  detail.GeneratedAt,
 		WindowMonths: windowMonths,
 		Rows:         make([]domain.PendingFixVencidosV2Row, 0, len(agg)),
 	}
@@ -254,7 +293,6 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 		for _, m := range months {
 
 			bucket := byMonth[m]
-
 			granos := make([]domain.PendingFixVencidosV2Grano, 0, len(bucket))
 
 			for _, it := range bucket {
@@ -276,4 +314,83 @@ func (s *PendingFixService) GetVencidosV2(ctx context.Context, uninego, cuit str
 	}
 
 	return out, nil
+}
+
+func matchPendingFix(r domain.PendingFixRow, f domain.PendingFixFilters) bool {
+
+	if f.UniNego != "" && r.UniNego != f.UniNego {
+		return false
+	}
+
+	if f.CUIT != "" && r.CUIT != f.CUIT {
+		return false
+	}
+
+	if f.VendCta != "" && r.VendCta != f.VendCta {
+		return false
+	}
+
+	if f.CompCta != "" && r.CompCta != f.CompCta {
+		return false
+	}
+
+	if f.Contrato != "" && r.Contrato != f.Contrato {
+		return false
+	}
+
+	if f.ContParte != "" && r.ContParte != f.ContParte {
+		return false
+	}
+
+	if f.CompNombre != "" && !strings.Contains(strings.ToUpper(r.CompNombre), strings.ToUpper(f.CompNombre)) {
+		return false
+	}
+
+	if f.MinPendientes > 0 && r.Pendientes < f.MinPendientes {
+		return false
+	}
+
+	if f.MinPendApli > 0 && r.PendApli < f.MinPendApli {
+		return false
+	}
+
+	// Fechas helper
+	inRange := func(date *time.Time, desde, hasta *time.Time) bool {
+		if date == nil {
+			return false
+		}
+		if desde != nil && date.Before(*desde) {
+			return false
+		}
+		if hasta != nil && date.After(*hasta) {
+			return false
+		}
+		return true
+	}
+
+	if f.FecEntDesde != nil || f.FecEntHasta != nil {
+		if !inRange(r.FecEnt, f.FecEntDesde, f.FecEntHasta) {
+			return false
+		}
+	}
+
+	if f.FecDesdeDesde != nil || f.FecDesdeHasta != nil {
+		if !inRange(r.FecDesde, f.FecDesdeDesde, f.FecDesdeHasta) {
+			return false
+		}
+	}
+
+	if f.FecHastaDesde != nil || f.FecHastaHasta != nil {
+		if !inRange(r.FecHasta, f.FecHastaDesde, f.FecHastaHasta) {
+			return false
+		}
+	}
+
+	if f.FecVtoEntDesde != nil || f.FecVtoEntHasta != nil {
+		if !inRange(r.FecVtoEnt, f.FecVtoEntDesde, f.FecVtoEntHasta) {
+			return false
+		}
+	}
+
+	return true
 }

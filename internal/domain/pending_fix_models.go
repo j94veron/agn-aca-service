@@ -114,3 +114,26 @@ type PendingFixRow struct {
 	DestinoNombre string `json:"destinoNombre"`
 	Observacion   string `json:"observacion"`
 }
+
+type PendingFixFilters struct {
+	UniNego string
+	CUIT    string
+	VendCta string
+	CompCta string
+
+	Contrato   string
+	ContParte  string
+	CompNombre string
+
+	MinPendientes float64
+	MinPendApli   float64
+
+	FecEntDesde    *time.Time
+	FecEntHasta    *time.Time
+	FecDesdeDesde  *time.Time
+	FecDesdeHasta  *time.Time
+	FecHastaDesde  *time.Time
+	FecHastaHasta  *time.Time
+	FecVtoEntDesde *time.Time
+	FecVtoEntHasta *time.Time
+}
