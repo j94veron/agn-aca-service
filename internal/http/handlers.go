@@ -43,18 +43,60 @@ func buildFilters(c *gin.Context) domain.PendingFixFilters {
 		ContParte:  c.Query("contparte"),
 		CompNombre: c.Query("compnombre"),
 
-		MinPendientes: parseFloat(c, "min_pendientes"),
-		MinPendApli:   parseFloat(c, "min_pendapli"),
+		MinPendientes: parseFloat(c, "pendientes_min"),
+		MinPendApli:   parseFloat(c, "pendapli_min"),
 
-		FecEntDesde:    parseDate(c, "fecent_desde"),
-		FecEntHasta:    parseDate(c, "fecent_hasta"),
-		FecDesdeDesde:  parseDate(c, "fecdesde_desde"),
-		FecDesdeHasta:  parseDate(c, "fecdesde_hasta"),
-		FecHastaDesde:  parseDate(c, "fechasta_desde"),
-		FecHastaHasta:  parseDate(c, "fechasta_hasta"),
-		FecVtoEntDesde: parseDate(c, "fecvto_desde"),
-		FecVtoEntHasta: parseDate(c, "fecvto_hasta"),
+		//NUEVOS NOMBRES CLAROS (con alias viejo para compatibilidad)
+
+		FecEntDesde: parseDateAlias(c,
+			"entrega_desde",
+			"fecent_desde",
+		),
+		FecEntHasta: parseDateAlias(c,
+			"entrega_hasta",
+			"fecent_hasta",
+		),
+
+		FecDesdeDesde: parseDateAlias(c,
+			"fijacion_inicio_desde",
+			"fecdesde_desde",
+		),
+		FecDesdeHasta: parseDateAlias(c,
+			"fijacion_inicio_hasta",
+			"fecdesde_hasta",
+		),
+
+		FecHastaDesde: parseDateAlias(c,
+			"fijacion_fin_desde",
+			"fechasta_desde",
+		),
+		FecHastaHasta: parseDateAlias(c,
+			"fijacion_fin_hasta",
+			"fechasta_hasta",
+		),
+
+		FecVtoEntDesde: parseDateAlias(c,
+			"vencimiento_entrega_desde",
+			"fecvto_desde",
+		),
+		FecVtoEntHasta: parseDateAlias(c,
+			"vencimiento_entrega_hasta",
+			"fecvto_hasta",
+		),
 	}
+}
+
+func parseDateAlias(c *gin.Context, keys ...string) *time.Time {
+	for _, k := range keys {
+		val := c.Query(k)
+		if val != "" {
+			t, err := time.Parse("2006-01-02", val)
+			if err == nil {
+				return &t
+			}
+		}
+	}
+	return nil
 }
 
 type Handlers struct {
