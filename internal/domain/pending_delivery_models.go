@@ -63,7 +63,7 @@ type PendingDeliveryQuery struct {
 	FecVtoDesde *time.Time
 	FecVtoHasta *time.Time
 
-	// paginado (recomendado para 25k)
+	// paginado
 	Offset int
 	Limit  int
 }

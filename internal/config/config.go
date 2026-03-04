@@ -13,11 +13,14 @@ type Config struct {
 
 	OracleCorretaje OracleConfig
 	OracleAcopio    OracleConfig
+	OracleAGN       OracleConfig
 
 	Redis RedisConfig
 
 	StatsTTL         time.Duration
 	SyncCron         string
+	SyncCronFix      string
+	SyncCronDelivery string
 	SyncMonths       int
 	ProxWindowMonths int
 }
@@ -53,6 +56,12 @@ func Load() (Config, error) {
 		ConnectString: mustGetenv("ORACLE_AC_CONNECT"),
 		LibDir:        getenv("ORACLE_AC_LIB_DIR", ""),
 	}
+	cfg.OracleAGN = OracleConfig{
+		User:          mustGetenv("ORACLE_AGN_USER"),
+		Pass:          mustGetenv("ORACLE_AGN_PASS"),
+		ConnectString: mustGetenv("ORACLE_AGN_CONNECT"),
+		LibDir:        getenv("ORACLE_AGN_LIB_DIR", ""),
+	}
 
 	db, err := strconv.Atoi(getenv("REDIS_DB", "0"))
 	if err != nil {
@@ -70,7 +79,8 @@ func Load() (Config, error) {
 	}
 	cfg.StatsTTL = time.Duration(ttlHours) * time.Hour
 
-	cfg.SyncCron = getenv("SYNC_CRON", "0 0 21 * * *")
+	cfg.SyncCron = getenv("SYNC_CRON_FIX", "0 0 21 * * *")
+	cfg.SyncCron = getenv("SYNC_CRON_DELIVERY", "0 0 21 * * *")
 
 	cfg.SyncMonths, err = strconv.Atoi(getenv("SYNC_MONTHS", "12"))
 	if err != nil {

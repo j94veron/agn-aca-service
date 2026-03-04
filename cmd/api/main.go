@@ -12,6 +12,7 @@ import (
 	"agn-service/internal/db"
 	"agn-service/internal/http"
 	"agn-service/internal/jobs"
+	"agn-service/internal/oracle"
 	"agn-service/internal/repository"
 	"agn-service/internal/service"
 )
@@ -36,6 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatal("oracle AC:", err)
 	}
+	agnDB, err := db.NewOracleDB(cfg.OracleAGN)
+	if err != nil {
+		log.Fatal("oracle AG:", err)
+	}
 
 	rdb := cache.NewRedis(cfg.Redis)
 	if err := cache.Ping(ctx, rdb); err != nil {
@@ -44,7 +49,37 @@ func main() {
 
 	coRepo := repository.NewOracleRepo(coDB)
 	acRepo := repository.NewOracleRepo(acDB)
+	agnCOClient := oracle.NewFromSqlx(agnDB)
+
+	contratoRepo := repository.NewContratoRepo(agnCOClient)
+	oliquiRepo := repository.NewOliquiRepo(agnCOClient)
+	ctamreRepo := repository.NewCtamreRepo(agnCOClient)
+	movauditRepo := repository.NewMovAuditRepo(agnCOClient)
+
 	redisRepo := repository.NewRedisRepo(rdb)
+
+	val := service.NewValidators(
+		contratoRepo,
+		oliquiRepo,
+		ctamreRepo,
+	)
+
+	oliquiSvc := service.NewOliquiService(
+		agnCOClient,
+		val,
+		contratoRepo,
+		oliquiRepo,
+		movauditRepo,
+		oliquiRepo,
+	)
+
+	ctamreSvc := service.NewCtamreService(
+		agnCOClient,
+		val,
+		contratoRepo,
+		ctamreRepo,
+		movauditRepo,
+	)
 
 	syncJob := jobs.NewSyncJob(coRepo, acRepo, redisRepo, cfg.StatsTTL, cfg.SyncMonths, cfg.ProxWindowMonths)
 	svc := service.NewPendingFixService(redisRepo)
@@ -63,14 +98,14 @@ func main() {
 
 	// Cron (segundos)
 	cr := cron.New(cron.WithSeconds())
-	_, err = cr.AddFunc(cfg.SyncCron, func() {
+	_, err = cr.AddFunc(cfg.SyncCronFix, func() {
 		if e := syncJob.Run(context.Background()); e != nil {
 			log.Println("sync job error:", e)
 		} else {
 			log.Println("sync job ok")
 		}
 	})
-	_, err = cr.AddFunc(cfg.SyncCron, func() {
+	_, err = cr.AddFunc(cfg.SyncCronDelivery, func() {
 		if e := pendingDeliverySyncJob.Run(context.Background()); e != nil {
 			log.Println("pending delivery sync error:", e)
 		} else {
@@ -82,7 +117,7 @@ func main() {
 	}
 	cr.Start()
 
-	r := http.NewRouter(svc, pendingDeliveryService, syncJob, pendingDeliverySyncJob)
+	r := http.NewRouter(svc, pendingDeliveryService, syncJob, pendingDeliverySyncJob, oliquiSvc, ctamreSvc)
 	log.Println("listening on", cfg.HTTPAddr)
 	if err := r.Run(cfg.HTTPAddr); err != nil {
 		log.Fatal(err)

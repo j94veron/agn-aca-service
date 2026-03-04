@@ -13,6 +13,8 @@ func NewRouter(
 	deliverySvc *service.PendingDeliveryService,
 	fixJob *jobs.SyncJob,
 	deliveryJob *jobs.PendingDeliverySyncJob,
+	oliquiSvc *service.OliquiService,
+	ctamreSvc *service.CtamreService,
 ) *gin.Engine {
 
 	r := gin.Default()
@@ -48,6 +50,16 @@ func NewRouter(
 	internalDelivery := r.Group("/api/v1/pending-delivery/internal")
 	{
 		internalDelivery.POST("/sync", dh.SyncNow)
+	}
+
+	agn := r.Group("/api/v1", auth.MiddlewareJWTGin())
+	{
+		agn.POST("/oliqui", CreateOliqui(oliquiSvc))
+		agn.POST("/ctamre", CreateCtamre(ctamreSvc))
+
+		//Metodos de Consulta Nuevos
+		agn.GET("/oliqui/tooltip", GetOliquiTooltip(oliquiSvc))
+		agn.GET("/oliqui/grid", GetOliquiGrid(oliquiSvc))
 	}
 
 	return r
