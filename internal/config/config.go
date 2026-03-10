@@ -18,7 +18,6 @@ type Config struct {
 	Redis RedisConfig
 
 	StatsTTL         time.Duration
-	SyncCron         string
 	SyncCronFix      string
 	SyncCronDelivery string
 	SyncMonths       int
@@ -79,8 +78,8 @@ func Load() (Config, error) {
 	}
 	cfg.StatsTTL = time.Duration(ttlHours) * time.Hour
 
-	cfg.SyncCron = getenv("SYNC_CRON_FIX", "0 0 21 * * *")
-	cfg.SyncCron = getenv("SYNC_CRON_DELIVERY", "0 0 21 * * *")
+	cfg.SyncCronFix = getenv("SYNC_CRON_FIX", "0 0 21 * * *")
+	cfg.SyncCronDelivery = getenv("SYNC_CRON_DELIVERY", "0 0 21 * * *")
 
 	cfg.SyncMonths, err = strconv.Atoi(getenv("SYNC_MONTHS", "12"))
 	if err != nil {

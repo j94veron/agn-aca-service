@@ -18,46 +18,59 @@ import (
 )
 
 func main() {
+	// ---- ENV ----
 	if err := godotenv.Load(); err != nil {
 		log.Println("no se pudo cargar .env (continuo igual):", err)
 	}
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("config:", err)
 	}
 
 	ctx := context.Background()
+	log.Println("service starting...")
 
+	// ---- ORACLE ----
 	coDB, err := db.NewOracleDB(cfg.OracleCorretaje)
 	if err != nil {
 		log.Fatal("oracle CO:", err)
 	}
+
 	acDB, err := db.NewOracleDB(cfg.OracleAcopio)
 	if err != nil {
 		log.Fatal("oracle AC:", err)
 	}
+
 	agnDB, err := db.NewOracleDB(cfg.OracleAGN)
 	if err != nil {
-		log.Fatal("oracle AG:", err)
+		log.Fatal("oracle AGN:", err)
 	}
 
+	log.Println("oracle connections OK")
+
+	// ---- REDIS ----
 	rdb := cache.NewRedis(cfg.Redis)
 	if err := cache.Ping(ctx, rdb); err != nil {
 		log.Fatal("redis:", err)
 	}
 
+	log.Println("redis connection OK")
+
+	// ---- REPOSITORIES ----
 	coRepo := repository.NewOracleRepo(coDB)
 	acRepo := repository.NewOracleRepo(acDB)
-	agnCOClient := oracle.NewFromSqlx(agnDB)
 
-	contratoRepo := repository.NewContratoRepo(agnCOClient)
-	oliquiRepo := repository.NewOliquiRepo(agnCOClient)
-	ctamreRepo := repository.NewCtamreRepo(agnCOClient)
-	movauditRepo := repository.NewMovAuditRepo(agnCOClient)
+	agnClient := oracle.NewFromSqlx(agnDB)
+
+	contratoRepo := repository.NewContratoRepo(agnClient)
+	oliquiRepo := repository.NewOliquiRepo(agnClient)
+	ctamreRepo := repository.NewCtamreRepo(agnClient)
+	movauditRepo := repository.NewMovAuditRepo(agnClient)
 
 	redisRepo := repository.NewRedisRepo(rdb)
 
+	// ---- SERVICES AGN ----
 	val := service.NewValidators(
 		contratoRepo,
 		oliquiRepo,
@@ -65,7 +78,7 @@ func main() {
 	)
 
 	oliquiSvc := service.NewOliquiService(
-		agnCOClient,
+		agnClient,
 		val,
 		contratoRepo,
 		oliquiRepo,
@@ -74,16 +87,26 @@ func main() {
 	)
 
 	ctamreSvc := service.NewCtamreService(
-		agnCOClient,
+		agnClient,
 		val,
 		contratoRepo,
 		ctamreRepo,
 		movauditRepo,
 	)
 
-	syncJob := jobs.NewSyncJob(coRepo, acRepo, redisRepo, cfg.StatsTTL, cfg.SyncMonths, cfg.ProxWindowMonths)
-	svc := service.NewPendingFixService(redisRepo)
+	// ---- PENDING FIX ----
+	syncJob := jobs.NewSyncJob(
+		coRepo,
+		acRepo,
+		redisRepo,
+		cfg.StatsTTL,
+		cfg.SyncMonths,
+		cfg.ProxWindowMonths,
+	)
 
+	pendingFixSvc := service.NewPendingFixService(redisRepo)
+
+	// ---- PENDING DELIVERY ----
 	pendingDeliveryRepoCO := repository.NewOraclePendingEntregaRepo(coDB)
 	pendingDeliveryRepoAC := repository.NewOraclePendingEntregaRepo(acDB)
 
@@ -94,32 +117,53 @@ func main() {
 		cfg.StatsTTL,
 	)
 
-	pendingDeliveryService := service.NewPendingDeliveryService(redisRepo)
+	pendingDeliverySvc := service.NewPendingDeliveryService(redisRepo)
 
-	// Cron (segundos)
+	// ---- CRON JOBS ----
 	cr := cron.New(cron.WithSeconds())
-	_, err = cr.AddFunc(cfg.SyncCronFix, func() {
-		if e := syncJob.Run(context.Background()); e != nil {
-			log.Println("sync job error:", e)
-		} else {
-			log.Println("sync job ok")
-		}
-	})
-	_, err = cr.AddFunc(cfg.SyncCronDelivery, func() {
-		if e := pendingDeliverySyncJob.Run(context.Background()); e != nil {
-			log.Println("pending delivery sync error:", e)
-		} else {
-			log.Println("pending delivery sync ok")
-		}
-	})
-	if err != nil {
-		log.Fatal("cron:", err)
-	}
-	cr.Start()
 
-	r := http.NewRouter(svc, pendingDeliveryService, syncJob, pendingDeliverySyncJob, oliquiSvc, ctamreSvc)
-	log.Println("listening on", cfg.HTTPAddr)
+	if cfg.SyncCronFix != "" {
+		_, err = cr.AddFunc(cfg.SyncCronFix, func() {
+			if e := syncJob.Run(ctx); e != nil {
+				log.Println("sync job error:", e)
+			} else {
+				log.Println("sync job ok")
+			}
+		})
+		if err != nil {
+			log.Fatal("cron fix:", err)
+		}
+	}
+
+	if cfg.SyncCronDelivery != "" {
+		_, err = cr.AddFunc(cfg.SyncCronDelivery, func() {
+			if e := pendingDeliverySyncJob.Run(ctx); e != nil {
+				log.Println("pending delivery sync error:", e)
+			} else {
+				log.Println("pending delivery sync ok")
+			}
+		})
+		if err != nil {
+			log.Fatal("cron delivery:", err)
+		}
+	}
+
+	cr.Start()
+	log.Println("cron jobs started")
+
+	// ---- HTTP SERVER ----
+	r := http.NewRouter(
+		pendingFixSvc,
+		pendingDeliverySvc,
+		syncJob,
+		pendingDeliverySyncJob,
+		oliquiSvc,
+		ctamreSvc,
+	)
+
+	log.Println("HTTP listening on", cfg.HTTPAddr)
+
 	if err := r.Run(cfg.HTTPAddr); err != nil {
-		log.Fatal(err)
+		log.Fatal("http server:", err)
 	}
 }
