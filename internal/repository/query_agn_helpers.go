@@ -17,42 +17,42 @@ func buildFilters(f domain.OliquiFilter) (string, []interface{}) {
 	i := 1
 
 	if f.ContInterno != nil {
-		where = append(where, fmt.Sprintf("c.continterno = :%d", i))
+		where = append(where, fmt.Sprintf("continterno = :%d", i))
 		args = append(args, *f.ContInterno)
 		i++
 	}
 	if f.Cosecha != nil {
-		where = append(where, fmt.Sprintf("c.cosecha = :%d", i))
+		where = append(where, fmt.Sprintf("cosecha = :%d", i))
 		args = append(args, *f.Cosecha)
 		i++
 	}
 	if f.Destino != nil {
-		where = append(where, fmt.Sprintf("c.destino = :%d", i))
+		where = append(where, fmt.Sprintf("destino = :%d", i))
 		args = append(args, *f.Destino)
 		i++
 	}
 	if f.Zona != nil {
-		where = append(where, fmt.Sprintf("c.zona = :%d", i))
+		where = append(where, fmt.Sprintf("zona = :%d", i))
 		args = append(args, *f.Zona)
 		i++
 	}
 	if f.Comprador != nil {
-		where = append(where, fmt.Sprintf("c.compcuit = :%d", i))
+		where = append(where, fmt.Sprintf("compcuit = :%d", i))
 		args = append(args, *f.Comprador)
 		i++
 	}
 	if f.TipoEntrega != nil {
-		where = append(where, fmt.Sprintf("c.tipoentrega = :%d", i))
+		where = append(where, fmt.Sprintf("tipoentrega = :%d", i))
 		args = append(args, *f.TipoEntrega)
 		i++
 	}
 	if f.FechaDesde != nil {
-		where = append(where, fmt.Sprintf("date_c(c.fecent) >= TO_DATE(:%d,'YYYY-MM-DD')", i))
+		where = append(where, fmt.Sprintf("date_c(fecent) >= TO_DATE(:%d,'YYYY-MM-DD')", i))
 		args = append(args, *f.FechaDesde)
 		i++
 	}
 	if f.FechaHasta != nil {
-		where = append(where, fmt.Sprintf("date_c(c.fecent) <= TO_DATE(:%d,'YYYY-MM-DD')", i))
+		where = append(where, fmt.Sprintf("date_c(fecent) <= TO_DATE(:%d,'YYYY-MM-DD')", i))
 		args = append(args, *f.FechaHasta)
 		i++
 	}
@@ -60,6 +60,7 @@ func buildFilters(f domain.OliquiFilter) (string, []interface{}) {
 	if len(where) == 0 {
 		return "", args
 	}
+
 	return " AND " + strings.Join(where, " AND "), args
 }
 
@@ -120,18 +121,18 @@ func qualify(schema, table string) string {
 func orderExpr(o string) string {
 	switch strings.ToUpper(strings.TrimSpace(o)) {
 	case "ENTREGADESDE":
-		return "date_c(c.fecent)"
+		return "date_c(fecent)"
 	case "ENTREGAHASTA":
-		return "date_c(c.fecvtoent)"
+		return "date_c(fecvtoent)"
 	case "COSECHA":
-		return "c.cosecha"
+		return "cosecha"
 	case "DESTINO":
-		return "c.destino"
+		return "destino"
 	case "ZONA":
-		return "c.zona"
+		return "zona"
 	case "COMPRADOR":
-		return "c.compcuit"
+		return "compcuit"
 	default:
-		return "date_c(c.fecent)"
+		return "date_c(fecent)"
 	}
 }
