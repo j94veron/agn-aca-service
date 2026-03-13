@@ -326,6 +326,10 @@ func matchPendingFix(r domain.PendingFixRow, f domain.PendingFixFilters) bool {
 		return false
 	}
 
+	if f.Segmento != "" && r.Segmento != f.Segmento {
+		return false
+	}
+
 	if f.VendCta != "" && r.VendCta != f.VendCta {
 		return false
 	}

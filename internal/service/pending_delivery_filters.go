@@ -11,6 +11,10 @@ func matchPendingDelivery(r domain.PendingDeliveryRow, f domain.PendingDeliveryF
 		return false
 	}
 
+	if f.Segmento != "" && r.Segmento != f.Segmento {
+		return false
+	}
+
 	if f.CuitVendedor != "" && r.CUITVendedor != f.CuitVendedor {
 		return false
 	}
