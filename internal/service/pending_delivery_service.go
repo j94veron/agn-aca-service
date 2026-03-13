@@ -84,7 +84,7 @@ func (s *PendingDeliveryService) GetList(
 	f domain.PendingDeliveryFilter,
 ) (*domain.PendingDeliverySnapshot, error) {
 
-	snap, err := s.redis.LoadPendingDelivery(ctx)
+	snap, err := s.redis.GetPendingDelivery(ctx)
 	if err != nil {
 		return nil, err
 	}
