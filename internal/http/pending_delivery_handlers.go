@@ -1,6 +1,7 @@
 package http
 
 import (
+	"agn-service/internal/domain"
 	"net/http"
 	"time"
 
@@ -81,4 +82,117 @@ func (h *PendingDeliveryHandlers) SyncNow(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *PendingDeliveryHandlers) GetPendingDeliveryList(c *gin.Context) {
+
+	f := domain.PendingDeliveryFilter{
+		UniNego:       c.Query("uninego"),
+		Segmento:      c.Query("segmento"),
+		CuitVendedor:  c.Query("cuit_vendedor"),
+		CuitComprador: c.Query("cuit_comprador"),
+		VendCta:       c.Query("vendcta"),
+		CompCta:       c.Query("compcta"),
+		Contrato:      c.Query("contrato"),
+		ContParte:     c.Query("contparte"),
+		Grano:         c.Query("grano"),
+		NomComp:       c.Query("nomcomp"),
+	}
+
+	f.FecEntDesde = parseDate(c.Query("fecent_desde"))
+	f.FecEntHasta = parseDate(c.Query("fecent_hasta"))
+
+	f.FecVtoDesde = parseDate(c.Query("fecvto_desde"))
+	f.FecVtoHasta = parseDate(c.Query("fecvto_hasta"))
+
+	resp, err := h.svc.GetList(c.Request.Context(), f)
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, resp)
+}
+
+func (h *PendingDeliveryHandlers) GetVencidos(c *gin.Context) {
+
+	f := domain.PendingDeliveryFilter{
+		UniNego:       c.Query("uninego"),
+		Segmento:      c.Query("segmento"),
+		CuitVendedor:  c.Query("cuit_vendedor"),
+		CuitComprador: c.Query("cuit_comprador"),
+	}
+
+	f.FecVtoDesde = parseDate(c.Query("fecvto_desde"))
+	f.FecVtoHasta = parseDate(c.Query("fecvto_hasta"))
+
+	resp, err := h.svc.GetVencidos(c.Request.Context(), f)
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, resp)
+}
+
+func (h *PendingDeliveryHandlers) GetSummary(c *gin.Context) {
+
+	f := domain.PendingDeliveryFilter{
+		UniNego:       c.Query("uninego"),
+		Segmento:      c.Query("segmento"),
+		CuitVendedor:  c.Query("cuit_vendedor"),
+		CuitComprador: c.Query("cuit_comprador"),
+		VendCta:       c.Query("vendcta"),
+		CompCta:       c.Query("compcta"),
+		Contrato:      c.Query("contrato"),
+		ContParte:     c.Query("contparte"),
+		Grano:         c.Query("grano"),
+		NomComp:       c.Query("nomcomp"),
+	}
+
+	f.FecEntDesde = parseDate(c.Query("fecent_desde"))
+	f.FecEntHasta = parseDate(c.Query("fecent_hasta"))
+
+	f.FecVtoDesde = parseDate(c.Query("fecvto_desde"))
+	f.FecVtoHasta = parseDate(c.Query("fecvto_hasta"))
+
+	resp, err := h.svc.GetSummary(c.Request.Context(), f)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *PendingDeliveryHandlers) GetMonthly(c *gin.Context) {
+
+	f := domain.PendingDeliveryFilter{
+		UniNego:       c.Query("uninego"),
+		Segmento:      c.Query("segmento"),
+		CuitVendedor:  c.Query("cuit_vendedor"),
+		CuitComprador: c.Query("cuit_comprador"),
+		VendCta:       c.Query("vendcta"),
+		CompCta:       c.Query("compcta"),
+		Contrato:      c.Query("contrato"),
+		ContParte:     c.Query("contparte"),
+		Grano:         c.Query("grano"),
+		NomComp:       c.Query("nomcomp"),
+	}
+
+	f.FecEntDesde = parseDate(c.Query("fecent_desde"))
+	f.FecEntHasta = parseDate(c.Query("fecent_hasta"))
+
+	f.FecVtoDesde = parseDate(c.Query("fecvto_desde"))
+	f.FecVtoHasta = parseDate(c.Query("fecvto_hasta"))
+
+	resp, err := h.svc.GetMonthly(c.Request.Context(), f)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }

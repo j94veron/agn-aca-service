@@ -28,6 +28,11 @@ SQL basado en el que pasaron:
 const sqlPendingFixAll = `
 SELECT
   g.cuit as cuit,
+  (CASE 
+		WHEN h.stipprovee = 51 THEN 'COOP'
+		WHEN  h.stipprovee = 63 THEN 'CDC'
+		ELSE 'TERCERO'
+  END) AS segmento,
   SUBSTR(TO_CHAR(b.vendcta),1,12)                AS vendcta,
   b.vendnombre                                   AS vendnombre,
   SUBSTR(TO_CHAR(b.compcta),1,12)                AS compcta,
@@ -102,6 +107,7 @@ AND (b.ttmaxfin - b.ittfijadas)   > 0
 
 type scanPendingFixRow struct {
 	CUIT            sql.NullString `db:"CUIT"`
+	Segmento        sql.NullString `db:"SEGMENTO"`
 	VendCta         sql.NullString `db:"VENDCTA"`
 	VendNombre      sql.NullString `db:"VENDNOMBRE"`
 	CompCta         sql.NullString `db:"COMPCTA"`
@@ -153,6 +159,7 @@ func mapPendingFixRow(x scanPendingFixRow, uninego string) domain.PendingFixRow 
 	r := domain.PendingFixRow{
 		UniNego:         uninego,
 		CUIT:            ns(x.CUIT),
+		Segmento:        ns(x.Segmento),
 		VendCta:         ns(x.VendCta),
 		VendNombre:      ns(x.VendNombre),
 		CompCta:         ns(x.CompCta),

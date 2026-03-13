@@ -27,6 +27,11 @@ func NewOraclePendingEntregaRepo(db *sqlx.DB) *OraclePendingEntregaRepo {
 // - Subqueries agregan Aplicados y Liquidados por ContInterno
 const sqlPendingDeliveryAll = `
 SELECT
+  (CASE 
+            WHEN e.stipprovee = 51 THEN 'COOP'
+            WHEN  e.stipprovee = 63 THEN 'CDC'
+            ELSE 'TERCERO'
+  END) AS segmento,
   a.zona                                       AS zona,
   a.contrato                                   AS contrato,
   a.contparte                                  AS contparte,
@@ -91,6 +96,7 @@ WHERE a.status IN('50','90')
 `
 
 type scanPendingDeliveryRow struct {
+	Segmento  sql.NullString `db:"SEGMENTO"`
 	Zona      sql.NullString `db:"ZONA"`
 	Contrato  sql.NullString `db:"CONTRATO"`
 	ContParte sql.NullString `db:"CONTPARTE"`
@@ -162,6 +168,7 @@ func mapPendingDeliveryRow(x scanPendingDeliveryRow, schema, uninego string) dom
 		UniNego: uninego,
 		Schema:  schema,
 
+		Segmento:  ns(x.Segmento),
 		Zona:      ns(x.Zona),
 		Contrato:  ns(x.Contrato),
 		ContParte: ns(x.ContParte),

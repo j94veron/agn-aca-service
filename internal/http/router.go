@@ -40,11 +40,16 @@ func NewRouter(
 	}
 
 	// =============================
-	// 🚀 Pending Delivery NUEVO
+	// Pending Delivery NUEVO
 	// =============================
 	delivery := r.Group("/api/v1/pending-delivery", auth.MiddlewareJWTGin())
 	{
-		delivery.GET("/list", dh.GetList)
+		//delivery.GET("/list", dh.GetList)
+		delivery.GET("/list", dh.GetPendingDeliveryList)
+		delivery.GET("/vencidos/v2", dh.GetVencidos)
+		delivery.GET("/monthly", dh.GetMonthly)
+		delivery.GET("/summary", dh.GetSummary)
+
 	}
 
 	internalDelivery := r.Group("/api/v1/pending-delivery/internal")

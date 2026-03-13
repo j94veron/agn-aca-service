@@ -6,7 +6,8 @@ import "time"
 type PendingFixDetailRow struct {
 	UniNego string `json:"uninego"` // CO / AC
 
-	CUIT string `json:"cuit"`
+	CUIT     string `json:"cuit"`
+	Segmento string `json:"segmento"`
 
 	CompCta  string `json:"compcta"`
 	Contrato string `json:"contrato"`
@@ -78,7 +79,8 @@ type PendingFixVencidosSnapshot struct {
 type PendingFixRow struct {
 	UniNego string `json:"uninego"` // "CO" o "AC"
 
-	CUIT string `json:"cuit"` // NECESARIO para summaries
+	CUIT     string `json:"cuit"` // NECESARIO para summaries
+	Segmento string `json:"segmento"`
 
 	VendCta         string `json:"vendcta"`
 	VendNombre      string `json:"vendnombre"`
@@ -116,10 +118,11 @@ type PendingFixRow struct {
 }
 
 type PendingFixFilters struct {
-	UniNego string
-	CUIT    string
-	VendCta string
-	CompCta string
+	UniNego  string
+	CUIT     string
+	Segmento string
+	VendCta  string
+	CompCta  string
 
 	Contrato   string
 	ContParte  string

@@ -7,6 +7,7 @@ type PendingDeliveryRow struct {
 	UniNego string `json:"uninego"` // "CO" o "AC" (origen / usuario Oracle)
 	Schema  string `json:"schema"`  // opcional: "CORRETAJE" o "ACOPIO" (debug/auditoría)
 
+	Segmento  string `json:"segmento"`
 	Zona      string `json:"zona"`
 	Contrato  string `json:"contrato"`
 	ContParte string `json:"contparte"`
@@ -74,4 +75,25 @@ type PendingDeliveryResponse struct {
 	Offset      int                  `json:"offset"`
 	Limit       int                  `json:"limit"`
 	Rows        []PendingDeliveryRow `json:"rows"`
+}
+
+type PendingDeliverySummaryRow struct {
+	UniNego string  `json:"uninego"`
+	Cuit    string  `json:"cuit"`
+	Tn      float64 `json:"tn"`
+}
+
+type PendingDeliverySummarySnapshot struct {
+	GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows        []PendingDeliverySummaryRow `json:"rows"`
+}
+
+type PendingDeliveryMonthlyRow struct {
+	Month string  `json:"month"`
+	Tn    float64 `json:"tn"`
+}
+
+type PendingDeliveryMonthlySnapshot struct {
+	GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows        []PendingDeliveryMonthlyRow `json:"rows"`
 }

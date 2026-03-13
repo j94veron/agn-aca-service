@@ -12,18 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func parseDate(c *gin.Context, key string) *time.Time {
-	val := c.Query(key)
-	if val == "" {
-		return nil
-	}
-	t, err := time.Parse("2006-01-02", val)
-	if err != nil {
-		return nil
-	}
-	return &t
-}
-
 func parseFloat(c *gin.Context, key string) float64 {
 	val := c.Query(key)
 	if val == "" {
@@ -37,6 +25,7 @@ func buildFilters(c *gin.Context) domain.PendingFixFilters {
 	return domain.PendingFixFilters{
 		UniNego:    c.Query("uninego"),
 		CUIT:       c.Query("cuit"),
+		Segmento:   c.Query("segmento"),
 		VendCta:    c.Query("vendcta"),
 		CompCta:    c.Query("compcta"),
 		Contrato:   c.Query("contrato"),
