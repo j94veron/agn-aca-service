@@ -109,7 +109,7 @@ func (s *PendingDeliveryService) GetSummary(
 	f domain.PendingDeliveryFilter,
 ) (*domain.PendingDeliverySummarySnapshot, error) {
 
-	snap, err := s.redis.LoadPendingDelivery(ctx)
+	snap, err := s.redis.GetPendingDelivery(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (s *PendingDeliveryService) GetMonthly(
 	f domain.PendingDeliveryFilter,
 ) (*domain.PendingDeliveryMonthlySnapshot, error) {
 
-	snap, err := s.redis.LoadPendingDelivery(ctx)
+	snap, err := s.redis.GetPendingDelivery(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,8 @@ func (s *PendingDeliveryService) GetVencidos(
 	f domain.PendingDeliveryFilter,
 ) (*domain.PendingDeliveryMonthlySnapshot, error) {
 
-	snap, err := s.redis.LoadPendingDelivery(ctx)
+	snap, err := s.redis.GetPendingDelivery(ctx)
+
 	if err != nil {
 		return nil, err
 	}
