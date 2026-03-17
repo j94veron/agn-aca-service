@@ -168,7 +168,7 @@ func mapPendingDeliveryRow(x scanPendingDeliveryRow, schema, uninego string) dom
 		UniNego: uninego,
 		Schema:  schema,
 
-		Segmento:  ns(x.Segmento),
+		//Segmento:  ns(x.Segmento),
 		Zona:      ns(x.Zona),
 		Contrato:  ns(x.Contrato),
 		ContParte: ns(x.ContParte),
