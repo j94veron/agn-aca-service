@@ -49,8 +49,8 @@ type PendingDeliveryRow struct {
 }
 
 type PendingDeliverySnapshot struct {
-	GeneratedAt time.Time            `json:"generatedAt"`
-	Rows        []PendingDeliveryRow `json:"rows"`
+	//GeneratedAt time.Time            `json:"generatedAt"`
+	Rows []PendingDeliveryRow `json:"rows"`
 }
 
 type PendingDeliveryQuery struct {
