@@ -82,7 +82,7 @@ func (s *PendingDeliveryService) Get(
 func (s *PendingDeliveryService) GetList(
 	ctx context.Context,
 	f domain.PendingDeliveryFilter,
-) (*domain.PendingDeliverySnapshot, error) {
+) (*domain.PendingDeliveryListResponse, error) {
 
 	snap, err := s.redis.GetPendingDelivery(ctx)
 	if err != nil {
@@ -101,7 +101,9 @@ func (s *PendingDeliveryService) GetList(
 	}
 
 	snap.Rows = out
-	return snap, nil
+	return &domain.PendingDeliveryListResponse{
+		Rows: out,
+	}, nil
 }
 
 func (s *PendingDeliveryService) GetSummary(

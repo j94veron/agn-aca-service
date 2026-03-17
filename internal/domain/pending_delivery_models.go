@@ -4,9 +4,9 @@ import "time"
 
 // Row “normalizado” para Redis (tipos seguros, fechas como *time.Time)
 type PendingDeliveryRow struct {
-	UniNego string `json:"uninego"` // "CO" o "AC" (origen / usuario Oracle)
-	Schema  string `json:"schema"`  // opcional: "CORRETAJE" o "ACOPIO" (debug/auditoría)
-
+	UniNego   string `json:"uninego"` // "CO" o "AC" (origen / usuario Oracle)
+	Schema    string `json:"schema"`  // opcional: "CORRETAJE" o "ACOPIO" (debug/auditoría)
+	Segmento  string `json:"segmento"`
 	Zona      string `json:"zona"`
 	Contrato  string `json:"contrato"`
 	ContParte string `json:"contparte"`
@@ -49,12 +49,16 @@ type PendingDeliveryRow struct {
 }
 
 type PendingDeliverySnapshot struct {
-	//GeneratedAt time.Time            `json:"generatedAt"`
+	GeneratedAt time.Time            `json:"generatedAt"`
+	Rows        []PendingDeliveryRow `json:"rows"`
+}
+
+type PendingDeliveryListResponse struct {
 	Rows []PendingDeliveryRow `json:"rows"`
 }
 
 type PendingDeliveryQuery struct {
-	//Segmento string
+	Segmento      string
 	UniNego       string // "CO" | "AC" | "" (ALL)
 	CUITVendedor  string
 	CUITComprador string
@@ -84,8 +88,8 @@ type PendingDeliverySummaryRow struct {
 }
 
 type PendingDeliverySummarySnapshot struct {
-	//GeneratedAt time.Time                   `json:"generatedAt"`
-	Rows []PendingDeliverySummaryRow `json:"rows"`
+	GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows        []PendingDeliverySummaryRow `json:"rows"`
 }
 
 type PendingDeliveryMonthlyRow struct {
@@ -94,6 +98,6 @@ type PendingDeliveryMonthlyRow struct {
 }
 
 type PendingDeliveryMonthlySnapshot struct {
-	//GeneratedAt time.Time                   `json:"generatedAt"`
-	Rows []PendingDeliveryMonthlyRow `json:"rows"`
+	GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows        []PendingDeliveryMonthlyRow `json:"rows"`
 }
