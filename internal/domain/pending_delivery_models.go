@@ -4,9 +4,9 @@ import "time"
 
 // Row “normalizado” para Redis (tipos seguros, fechas como *time.Time)
 type PendingDeliveryRow struct {
-	UniNego   string `json:"uninego"` // "CO" o "AC" (origen / usuario Oracle)
-	Schema    string `json:"schema"`  // opcional: "CORRETAJE" o "ACOPIO" (debug/auditoría)
-	Segmento  string `json:"segmento"`
+	UniNego string `json:"uninego"` // "CO" o "AC" (origen / usuario Oracle)
+	Schema  string `json:"schema"`  // opcional: "CORRETAJE" o "ACOPIO" (debug/auditoría)
+	//Segmento  string `json:"segmento"`
 	Zona      string `json:"zona"`
 	Contrato  string `json:"contrato"`
 	ContParte string `json:"contparte"`
