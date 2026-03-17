@@ -54,6 +54,7 @@ type PendingDeliverySnapshot struct {
 }
 
 type PendingDeliveryQuery struct {
+	//Segmento string
 	UniNego       string // "CO" | "AC" | "" (ALL)
 	CUITVendedor  string
 	CUITComprador string
@@ -69,11 +70,11 @@ type PendingDeliveryQuery struct {
 }
 
 type PendingDeliveryResponse struct {
-	GeneratedAt time.Time            `json:"generatedAt"`
-	Count       int                  `json:"count"`
-	Offset      int                  `json:"offset"`
-	Limit       int                  `json:"limit"`
-	Rows        []PendingDeliveryRow `json:"rows"`
+	//GeneratedAt time.Time            `json:"generatedAt"`
+	Count  int                  `json:"count"`
+	Offset int                  `json:"offset"`
+	Limit  int                  `json:"limit"`
+	Rows   []PendingDeliveryRow `json:"rows"`
 }
 
 type PendingDeliverySummaryRow struct {
@@ -83,8 +84,8 @@ type PendingDeliverySummaryRow struct {
 }
 
 type PendingDeliverySummarySnapshot struct {
-	GeneratedAt time.Time                   `json:"generatedAt"`
-	Rows        []PendingDeliverySummaryRow `json:"rows"`
+	//GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows []PendingDeliverySummaryRow `json:"rows"`
 }
 
 type PendingDeliveryMonthlyRow struct {
@@ -93,6 +94,6 @@ type PendingDeliveryMonthlyRow struct {
 }
 
 type PendingDeliveryMonthlySnapshot struct {
-	GeneratedAt time.Time                   `json:"generatedAt"`
-	Rows        []PendingDeliveryMonthlyRow `json:"rows"`
+	//GeneratedAt time.Time                   `json:"generatedAt"`
+	Rows []PendingDeliveryMonthlyRow `json:"rows"`
 }
